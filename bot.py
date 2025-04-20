@@ -1,3 +1,4 @@
+
 import os
 import re
 import asyncio
@@ -7,7 +8,6 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.utils.markdown import hbold
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
@@ -19,7 +19,6 @@ bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher(storage=MemoryStorage())
 
 POST_HISTORY = {}
-
 
 def analyze_text(text):
     emoji_count = len(re.findall(r"[\U00010000-\U0010ffff]", text))
@@ -33,7 +32,6 @@ def analyze_text(text):
         "links": link_count,
         "hashtags": hashtag_count,
     }
-
 
 async def fetch_recent_posts():
     recent_stats = []
@@ -54,7 +52,6 @@ async def fetch_recent_posts():
         recent_stats.append(stats)
     return recent_stats
 
-
 def build_report(posts):
     if not posts:
         return "За последние сутки новых постов не было."
@@ -74,14 +71,21 @@ def build_report(posts):
     top_words = ", ".join(f"{w} ({c})" for w, c in sorted_words)
 
     return (
-        f"<b>\ud83d\udcca Отчёт за сутки — {len(posts)} пост(ов)</b>\n"
-        f"{hbold('\ud83d\udc41 Всего просмотров')}: {total_views}\n"
-        f"{hbold('\u270d\ufe0f Средняя длина текста')}: {avg_length:.0f} символов / {avg_words:.0f} слов\n"
-        f"{hbold('\ud83d\ude0a Эмодзи всего')}: {total_emojis}\n"
-        f"{hbold('\ud83d\udd17 Ссылок всего')}: {total_links}\n"
-        f"{hbold('\ud83d\udcac Частые слова')}: {top_words}"
+        "<b>📊 Отчёт за сутки — {count} пост(ов)</b>\n"
+        "👁 Всего просмотров: {views}\n"
+        "✍️ Средняя длина текста: {length:.0f} символов / {words:.0f} слов\n"
+        "😊 Эмодзи всего: {emojis}\n"
+        "🔗 Ссылок всего: {links}\n"
+        "💬 Частые слова: {top}"
+    ).format(
+        count=len(posts),
+        views=total_views,
+        length=avg_length,
+        words=avg_words,
+        emojis=total_emojis,
+        links=total_links,
+        top=top_words
     )
-
 
 @dp.message(F.text == "/analyze")
 async def manual_report(message: Message):
@@ -91,14 +95,11 @@ async def manual_report(message: Message):
     report = build_report(posts)
     await message.answer(report)
 
-
 async def on_startup(_: web.Application):
     await bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/webhook")
 
-
 async def on_shutdown(_: web.Application):
     await bot.delete_webhook()
-
 
 async def main():
     logging.basicConfig(level=logging.INFO)
@@ -108,7 +109,6 @@ async def main():
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
     return app
-
 
 if __name__ == '__main__':
     web.run_app(main(), host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
