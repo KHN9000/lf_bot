@@ -1,22 +1,25 @@
+import os
+import re
 import asyncio
 import logging
-import re
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.utils.markdown import hbold
-import os
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = "@bed_for_cat"
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(storage=MemoryStorage(), parse_mode=ParseMode.HTML)
+bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher(storage=MemoryStorage())
 
 POST_HISTORY = {}
+
 
 def analyze_text(text):
     emoji_count = len(re.findall(r"[\U00010000-\U0010ffff]", text))
@@ -30,6 +33,7 @@ def analyze_text(text):
         "links": link_count,
         "hashtags": hashtag_count,
     }
+
 
 async def fetch_recent_posts():
     recent_stats = []
@@ -50,6 +54,7 @@ async def fetch_recent_posts():
         recent_stats.append(stats)
     return recent_stats
 
+
 def build_report(posts):
     if not posts:
         return "За последние сутки новых постов не было."
@@ -69,13 +74,14 @@ def build_report(posts):
     top_words = ", ".join(f"{w} ({c})" for w, c in sorted_words)
 
     return (
-        f"<b>📊 Отчёт за сутки — {len(posts)} пост(ов)</b>\n"
-        f"{hbold('👁 Всего просмотров')}: {total_views}\n"
-        f"{hbold('✍️ Средняя длина текста')}: {avg_length:.0f} символов / {avg_words:.0f} слов\n"
-        f"{hbold('😊 Эмодзи всего')}: {total_emojis}\n"
-        f"{hbold('🔗 Ссылок всего')}: {total_links}\n"
-        f"{hbold('💬 Частые слова')}: {top_words}"
+        f"<b>\ud83d\udcca Отчёт за сутки — {len(posts)} пост(ов)</b>\n"
+        f"{hbold('\ud83d\udc41 Всего просмотров')}: {total_views}\n"
+        f"{hbold('\u270d\ufe0f Средняя длина текста')}: {avg_length:.0f} символов / {avg_words:.0f} слов\n"
+        f"{hbold('\ud83d\ude0a Эмодзи всего')}: {total_emojis}\n"
+        f"{hbold('\ud83d\udd17 Ссылок всего')}: {total_links}\n"
+        f"{hbold('\ud83d\udcac Частые слова')}: {top_words}"
     )
+
 
 @dp.message(F.text == "/analyze")
 async def manual_report(message: Message):
@@ -85,23 +91,24 @@ async def manual_report(message: Message):
     report = build_report(posts)
     await message.answer(report)
 
-async def scheduled_report():
-    while True:
-        now = datetime.now()
-        target = now.replace(hour=10, minute=0, second=0, microsecond=0)
-        if now >= target:
-            target += timedelta(days=1)
-        wait_time = (target - now).total_seconds()
-        await asyncio.sleep(wait_time)
 
-        posts = await fetch_recent_posts()
-        report = build_report(posts)
-        await bot.send_message(chat_id=ADMIN_USER_ID, text=report)
+async def on_startup(_: web.Application):
+    await bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/webhook")
+
+
+async def on_shutdown(_: web.Application):
+    await bot.delete_webhook()
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    asyncio.create_task(scheduled_report())
-    await dp.start_polling(bot)
+    app = web.Application()
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
+    setup_application(app, dp, bot=bot)
+    app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
+    return app
 
-if __name__ == "__main__":
-    asyncio.run(main())
+
+if __name__ == '__main__':
+    web.run_app(main(), host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
