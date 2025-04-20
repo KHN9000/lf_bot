@@ -13,7 +13,7 @@ from aiohttp import web
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = "@bed_for_cat"
-ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))
 
 bot = Bot(
     token=API_TOKEN,
@@ -90,13 +90,20 @@ def build_report(posts):
         top=top_words
     )
 
-@dp.message(F.text == "/analyze")
-async def manual_report(message: Message):
-    if message.from_user.id != ADMIN_USER_ID:
-        return await message.answer("Нет доступа.")
-    posts = await fetch_recent_posts()
-    report = build_report(posts)
-    await message.answer(report)
+@dp.message()
+async def universal_handler(message: Message):
+    print("➡️ Пришло сообщение:", message)
+    try:
+        if message.text and message.text.startswith("/analyze"):
+            if message.from_user and message.from_user.id == ADMIN_USER_ID:
+                posts = await fetch_recent_posts()
+                report = build_report(posts)
+                await message.answer(report)
+            else:
+                await message.answer("Нет доступа.")
+    except Exception as e:
+        await message.answer("Ошибка обработки.")
+        print("❌ Ошибка:", e)
 
 async def on_startup(_: web.Application):
     await bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/webhook")
