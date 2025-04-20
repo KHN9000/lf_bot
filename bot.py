@@ -13,8 +13,8 @@ API_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = "@bed_for_cat"
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
 
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher(storage=MemoryStorage())
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(storage=MemoryStorage(), parse_mode=ParseMode.HTML)
 
 POST_HISTORY = {}
 
