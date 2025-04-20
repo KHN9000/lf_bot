@@ -3,18 +3,21 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta
+
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import Message
 from aiogram.utils.markdown import hbold
+from aiogram.client.default import DefaultBotProperties
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
 CHANNEL_USERNAME = "@bed_for_cat"
 
-bot = Bot(token=API_TOKEN, default=types.DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
+
 POST_HISTORY = {}
 
 def analyze_text(text):
@@ -39,7 +42,6 @@ async def fetch_recent_posts():
             continue
         if not message.text:
             continue
-
         stats = analyze_text(message.text)
         stats["views"] = message.views or 0
         stats["date"] = message.date.strftime("%Y-%m-%d %H:%M")
@@ -83,9 +85,6 @@ async def manual_report(message: Message):
         return
     posts = await fetch_recent_posts()
     report = build_report(posts)
-    if not report:
-        await message.answer("Нет данных для анализа.")
-        return
     await message.answer(report)
 
 async def main():
