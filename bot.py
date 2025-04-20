@@ -1,26 +1,20 @@
 import os
-import re
 import asyncio
 import logging
+import re
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiogram.client.default import DefaultBotProperties
-from aiohttp import web
+from aiogram.utils.markdown import hbold
 
 API_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
 CHANNEL_USERNAME = "@bed_for_cat"
-ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))
 
-bot = Bot(
-    token=API_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
+bot = Bot(token=API_TOKEN, default=types.DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
-
 POST_HISTORY = {}
 
 def analyze_text(text):
@@ -74,61 +68,29 @@ def build_report(posts):
     top_words = ", ".join(f"{w} ({c})" for w, c in sorted_words)
 
     return (
-        "<b>📊 Отчёт за сутки — {count} пост(ов)</b>\n"
-        "👁 Всего просмотров: {views}\n"
-        "✍️ Средняя длина текста: {length:.0f} символов / {words:.0f} слов\n"
-        "😊 Эмодзи всего: {emojis}\n"
-        "🔗 Ссылок всего: {links}\n"
-        "💬 Частые слова: {top}"
-    ).format(
-        count=len(posts),
-        views=total_views,
-        length=avg_length,
-        words=avg_words,
-        emojis=total_emojis,
-        links=total_links,
-        top=top_words
+        f"<b>📊 Отчёт за сутки — {len(posts)} пост(ов)</b>\n"
+        f"{hbold('👁 Всего просмотров')}: {total_views}\n"
+        f"{hbold('✍️ Средняя длина текста')}: {avg_length:.0f} символов / {avg_words:.0f} слов\n"
+        f"{hbold('😊 Эмодзи всего')}: {total_emojis}\n"
+        f"{hbold('🔗 Ссылок всего')}: {total_links}\n"
+        f"{hbold('💬 Частые слова')}: {top_words}"
     )
 
-@dp.message()
-async def universal_handler(message: Message):
-    print("➡️ message received:", message)
-    print("👤 from_user:", message.from_user)
-    print("🧠 ID in env:", ADMIN_USER_ID)
-    if message.text and message.text.startswith("/analyze"):
-        if message.from_user and message.from_user.id == ADMIN_USER_ID:
-            posts = await fetch_recent_posts()
-            report = build_report(posts)
+@dp.message(F.text == "/analyze")
+async def manual_report(message: Message):
+    if message.from_user.id != ADMIN_USER_ID:
+        await message.answer("Нет доступа.")
+        return
+    posts = await fetch_recent_posts()
+    report = build_report(posts)
     if not report:
         await message.answer("Нет данных для анализа.")
-    else:
-        await message.answer(report)
-            return
-        await message.answer('⚠️ Отчёт не сформирован.')
         return
-        if not report:
-            await message.answer('⚠️ Отчёт не сформирован.')
-            return
-            await message.answer('⚠️ Отчёт не сформирован.')
-            return
-        await message.answer(report)
-        else:
-            await message.answer("Нет доступа.")
-
-async def on_startup(_: web.Application):
-    await bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/webhook")
-
-async def on_shutdown(_: web.Application):
-    await bot.delete_webhook()
+    await message.answer(report)
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    app = web.Application()
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
-    setup_application(app, dp, bot=bot)
-    app.on_startup.append(on_startup)
-    app.on_shutdown.append(on_shutdown)
-    return app
+    await dp.start_polling(bot)
 
-if __name__ == '__main__':
-    web.run_app(main(), host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+if __name__ == "__main__":
+    asyncio.run(main())
