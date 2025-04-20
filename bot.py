@@ -92,18 +92,16 @@ def build_report(posts):
 
 @dp.message()
 async def universal_handler(message: Message):
-    print("➡️ Пришло сообщение:", message)
-    try:
-        if message.text and message.text.startswith("/analyze"):
-            if message.from_user and message.from_user.id == ADMIN_USER_ID:
-                posts = await fetch_recent_posts()
-                report = build_report(posts)
-                await message.answer(report)
-            else:
-                await message.answer("Нет доступа.")
-    except Exception as e:
-        await message.answer("Ошибка обработки.")
-        print("❌ Ошибка:", e)
+    print("➡️ message received:", message)
+    print("👤 from_user:", message.from_user)
+    print("🧠 ID in env:", ADMIN_USER_ID)
+    if message.text and message.text.startswith("/analyze"):
+        if message.from_user and message.from_user.id == ADMIN_USER_ID:
+            posts = await fetch_recent_posts()
+            report = build_report(posts)
+            await message.answer(report)
+        else:
+            await message.answer("Нет доступа.")
 
 async def on_startup(_: web.Application):
     await bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}/webhook")
