@@ -99,7 +99,10 @@ async def universal_handler(message: Message):
         if message.from_user and message.from_user.id == ADMIN_USER_ID:
             posts = await fetch_recent_posts()
             report = build_report(posts)
-            await message.answer(report)
+                if not report:
+        await message.answer('⚠️ Отчёт не сформирован.')
+        return
+    await message.answer(report)
         else:
             await message.answer("Нет доступа.")
 
