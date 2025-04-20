@@ -8,13 +8,17 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = "@bed_for_cat"
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID"))
 
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
+bot = Bot(
+    token=API_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
 dp = Dispatcher(storage=MemoryStorage())
 
 POST_HISTORY = {}
